@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonuri</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0f0f0f;
+  color: #e8e8e8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+header {
+  padding: 20px 0 20px;
+  border-bottom: 1px solid #2a2a2a;
+  margin-bottom: 20px;
+}
+header h1 { font-size: 22px; font-weight: 700; color: #c8f04a; }
+header p { font-size: 11px; color: #666; margin-top: 3px; }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.tab {
+  flex: 1; padding: 10px; border-radius: 8px; font-size: 13px;
+  cursor: pointer; border: 1px solid #2a2a2a;
+  background: transparent; color: #666;
+  font-family: inherit; text-align: center;
+}
+.tab.active { background: #c8f04a; color: #000; border-color: #c8f04a; font-weight: 700; }
+.card {
+  background: #1a1a1a; border: 1px solid #2a2a2a;
+  border-radius: 10px; padding: 14px; margin-bottom: 16px;
+}
+.card label {
+  font-size: 11px; color: #666; display: block;
+  margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.card input {
+  width: 100%; background: #111; border: 1px solid #2a2a2a;
+  color: #e8e8e8; padding: 9px 12px; border-radius: 7px;
+  font-family: inherit; font-size: 13px; outline: none;
+}
+.card input:focus { border-color: #c8f04a; }
+.upload-zone {
+  border: 1.5px dashed #2a2a2a; border-radius: 12px;
+  padding: 28px 20px; text-align: center; cursor: pointer;
+  background: #1a1a1a; position: relative; margin-bottom: 16px;
+}
+.upload-zone.drag { border-color: #c8f04a; background: #1e2010; }
+.upload-zone input {
+  position: absolute; inset: 0; opacity: 0;
+  cursor: pointer; width: 100%; height: 100%;
+}
+.upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone strong { color: #c8f04a; font-size: 15px; display: block; margin-bottom: 4px; }
+.upload-zone p { font-size: 13px; color: #666; }
+.previews { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.thumb {
+  position: relative; width: 72px; height: 72px;
+  border-radius: 8px; overflow: hidden; border: 1.5px solid #2a2a2a;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb button {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,0.8); color: #fff;
+  border: none; border-radius: 50%;
+  width: 20px; height: 20px; font-size: 11px; cursor: pointer;
+}
+.btn {
+  width: 100%; padding: 14px; border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.btn-green { background: #c8f04a; color: #0f0f0f; }
+.btn-green:active { background: #b8e03a; }
+.btn-green:disabled { background: #333; color: #666; cursor: not-allowed; }
+.btn-dark {
+  background: #1a1a1a; color: #e8e8e8;
+  border: 1px solid #2a2a2a; margin-top: 8px;
+}
+.status {
+  text-align: center; padding: 12px; font-size: 13px;
+  color: #666; background: #1a1a1a;
+  border-radius: 8px; margin: 12px 0; border: 1px solid #2a2a2a;
+}
+.status.loading { color: #c8f04a; border-color: #c8f04a; }
+.status.error { color: #f04a4a; border-color: #f04a4a; }
+.status.ok { color: #4af0c8; border-color: #4af0c8; }
+.spinner {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid #333; border-top-color: #c8f04a;
+  border-radius: 50%; animation: spin .7s linear infinite;
+  margin-right: 7px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.tbl-wrap {
+  background: #1a1a1a; border-radius: 12px;
+  border: 1px solid #2a2a2a; overflow: hidden; margin: 16px 0;
+}
+.tbl-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border-bottom: 1px solid #2a2a2a;
+}
+.tbl-head strong { color: #4af0c8; font-size: 14px; }
+.tbl-head span { color: #666; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  font-size: 10px; color: #666; text-transform: uppercase;
+  letter-spacing: .8px; padding: 7px 10px; text-align: left;
+  background: #111; border-bottom: 1px solid #2a2a2a;
+}
+tbody tr { border-bottom: 1px solid #1e1e1e; }
+tbody tr:last-child { border: none; }
+tbody td { padding: 7px 10px; font-size: 12px; }
+td.luna { color: #666; font-size: 11px; white-space: nowrap; }
+td.cat span {
+  font-size: 10px; background: #222; color: #4af0c8;
+  border-radius: 4px; padding: 2px 6px; white-space: nowrap;
+}
+td.pret { color: #c8f04a; text-align: right; white-space: nowrap; }
+td input {
+  background: transparent; border: none; color: inherit;
+  font: inherit; width: 100%; outline: none;
+}
+td input:focus { background: #222; border-radius: 3px; padding: 1px 4px; }
+.hist-item {
+  background: #1a1a1a; border: 1px solid #2a2a2a;
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.hist-item .hl { flex: 1; }
+.hist-item .hdate { font-size: 11px; color: #666; }
+.hist-item .hname { font-size: 13px; margin: 2px 0; }
+.hist-item .htotal { font-size: 14px; color: #c8f04a; font-weight: 700; }
+.hist-item .hbtns { display: flex; gap: 6px; margin-left: 10px; }
+.hbtn {
+  padding: 5px 9px; border-radius: 6px; font-size: 11px;
+  cursor: pointer; border: 1px solid; background: transparent; font-family: inherit;
+}
+.hbtn.dl { color: #4af0c8; border-color: #4af0c8; }
+.hbtn.rm { color: #f04a4a; border-color: #f04a4a; }
+.empty { text-align: center; padding: 30px; color: #666; }
+.empty .eicon { font-size: 28px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Bonuri</h1>
+  <p>receipt parser · expense tracker</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('parse')">📷 Parsează</button>
+  <button class="tab" onclick="showTab('history')">📋 Istoric</button>
+</div>
+
+<div id="tab-parse">
+  <div class="card">
+    <label>Anthropic API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." oninput="localStorage.setItem('ak', this.value)">
+  </div>
+
+  <div class="upload-zone" id="dz">
+    <input type="file" id="fi" accept="image/*" multiple onchange="addFiles(this.files)">
+    <div class="icon">📄</div>
+    <strong>Adauga fotografii bonuri</strong>
+    <p>Apasa pentru a selecta</p>
+  </div>
+
+  <div class="previews" id="prev"></div>
+
+  <button class="btn btn-green" id="pbtn" onclick="doparse()" disabled>
+    Parseaza bonurile
+  </button>
+
+  <div id="st" style="display:none" class="status"></div>
+
+  <div id="res" style="display:none">
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <strong>Rezultat</strong>
+        <span id="rcnt"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Luna</th>
+              <th>Cat.</th>
+              <th>Produs</th>
+              <th style="text-align:right">Pret</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="dlXls()">Descarca Excel</button>
+    <button class="btn btn-dark" onclick="savehist()">Salveaza in istoric</button>
+    <button class="btn btn-dark" onclick="doreset()">Parseaza altele</button>
+  </div>
+</div>
+
+<div id="tab-history" style="display:none">
+  <div id="hlist"></div>
+</div>
+
+<script>
+var files = [];
+var rows = [];
+var db;
+
+var rq = indexedDB.open('bonuri', 1);
+rq.onupgradeneeded = function(e) {
+  e.target.result.createObjectStore('r', {keyPath: 'id', autoIncrement: true});
+};
+rq.onsuccess = function(e) {
+  db = e.target.result;
+};
+
+function dbAdd(d) {
+  return new Promise(function(ok, no) {
+    var t = db.transaction('r', 'readwrite');
+    t.objectStore('r').add(d).onsuccess = function(e) { ok(e.target.result); };
+    t.onerror = no;
+  });
+}
+
+function dbAll() {
+  return new Promise(function(ok, no) {
+    var t = db.transaction('r', 'readonly');
+    t.objectStore('r').getAll().onsuccess = function(e) { ok(e.target.result); };
+    t.onerror = no;
+  });
+}
+
+function dbDel(id) {
+  return new Promise(function(ok, no) {
+    var t = db.transaction('r', 'readwrite');
+    t.objectStore('r').delete(id).onsuccess = ok;
+    t.onerror = no;
+  });
+}
+
+document.getElementById('apiKey').value = localStorage.getItem('ak') || '';
+
+function addFiles(fl) {
+  for (var i = 0; i < fl.length; i++) {
+    var f = fl[i];
+    if (!files.find(function(x) { return x.name === f.name && x.size === f.size; })) {
+      files.push(f);
+    }
+  }
+  renderPrev();
+  document.getElementById('pbtn').disabled = files.length === 0;
+}
+
+function renderPrev() {
+  var html = '';
+  for (var i = 0; i < files.length; i++) {
+    var url = URL.createObjectURL(files[i]);
+    html += '<div class="thumb"><img src="' + url + '"><button onclick="rmFile(' + i + ')">x</button></div>';
+  }
+  document.getElementById('prev').innerHTML = html;
+}
+
+function rmFile(i) {
+  files.splice(i, 1);
+  renderPrev();
+  document.getElementById('pbtn').disabled = files.length === 0;
+}
+
+var dz = document.getElementById('dz');
+dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', function() { dz.classList.remove('drag'); });
+dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+
+function toB64(f) {
+  return new Promise(function(ok) {
+    var r = new FileReader();
+    r.onload = function() { ok(r.result.split(',')[1]); };
+    r.readAsDataURL(f);
+  });
+}
+
+async function doparse() {
+  var key = document.getElementById('apiKey').value.trim();
+  if (!key) { st('Introdu API key-ul!', 'error'); return; }
+  document.getElementById('pbtn').disabled = true;
+  st('<span class="spinner"></span>Se parseaza...', 'loading');
+
+  try {
+    var imgs = [];
+    for (var i = 0; i < files.length; i++) {
+      imgs.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: files[i].type || 'image/jpeg',
+          data: await toB64(files[i])
+        }
+      });
+    }
+    imgs.push({type: 'text', text: 'Parseaza toate bonurile din aceste imagini si returneaza JSON.'});
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        system: 'Esti un asistent care parseaza bonuri fiscale din Moldova. Extrage TOATE produsele si returneaza DOAR JSON valid fara alt text. Format: {"items":[{"luna":"2026 03","categorie":"Alimente","produs":"Cartofi","pret":25.50}]}. REGULI: luna format YYYY MM sau gol daca nu e vizibil. categorie doar din: Alimente, Transport, Comunale, Medicina, Igiena, Curatenie, Binefacere, Altele, Familie, Arenda, Birotica, Electrocasnice, Imbracaminte, Casnice, Cadou, Taxe. produs 1-2 cuvinte romana generic. pret numarul final dupa reduceri. Sacosa->Altele. Suc/Fanta->Alimente,Suc. Apa->Alimente,Apa. Castraveti->Alimente,Castraveti. Lavash->Alimente,Lavas. Medicamente->Medicina.',
+        messages: [{role: 'user', content: imgs}]
+      })
+    });
+
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error && data.error.message ? data.error.message : 'API error ' + resp.status);
+
+    var txt = data.content.map(function(b) { return b.text || ''; }).join('');
+    var m = txt.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('JSON invalid');
+    var parsed = JSON.parse(m[0]);
+    rows = parsed.items || [];
+    if (!rows.length) throw new Error('Niciun produs gasit');
+
+    renderTable();
+    st('OK: ' + rows.length + ' produse gasite', 'ok');
+    document.getElementById('res').style.display = 'block';
+    document.getElementById('rcnt').textContent = rows.length + ' randuri';
+
+  } catch(e) {
+    st('Eroare: ' + e.message, 'error');
+    document.getElementById('pbtn').disabled = false;
+  }
+}
+
+function renderTable() {
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    html += '<tr>' +
+      '<td class="luna"><input value="' + (r.luna || '') + '" data-i="' + i + '" data-f="luna" onchange="upd(this)"></td>' +
+      '<td class="cat"><span>' + r.categorie + '</span></td>' +
+      '<td><input value="' + r.produs + '" data-i="' + i + '" data-f="produs" onchange="upd(this)"></td>' +
+      '<td class="pret"><input value="' + r.pret + '" data-i="' + i + '" data-f="pret" onchange="upd(this)" style="text-align:right"></td>' +
+      '</tr>';
+  }
+  document.getElementById('tb').innerHTML = html;
+}
+
+function upd(el) {
+  var i = parseInt(el.dataset.i);
+  var f = el.dataset.f;
+  rows[i][f] = f === 'pret' ? (parseFloat(el.value) || 0) : el.value;
+}
+
+function dlXls() {
+  var wb = XLSX.utils.book_new();
+  var data = [['Luna', 'Categorie', 'Produs', 'Pret (MDL)']];
+  for (var i = 0; i < rows.length; i++) {
+    data.push([rows[i].luna || '', rows[i].categorie, rows[i].produs, rows[i].pret]);
+  }
+  var ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:10}, {wch:14}, {wch:22}, {wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Bonuri');
+  var luna = rows[0] && rows[0].luna ? rows[0].luna.replace(' ', '_') : 'bon';
+  XLSX.writeFile(wb, 'bonuri_' + luna + '.xlsx');
+}
+
+async function savehist() {
+  if (!db || !rows.length) return;
+  var total = 0;
+  for (var i = 0; i < rows.length; i++) total += parseFloat(rows[i].pret) || 0;
+  await dbAdd({
+    date: new Date().toISOString(),
+    luna: (rows[0] && rows[0].luna) ? rows[0].luna : 'necunoscut',
+    rows: rows.length,
+    total: total.toFixed(2),
+    data: rows
+  });
+  st('Salvat in istoric!', 'ok');
+}
+
+async function loadHist() {
+  if (!db) return;
+  var all = await dbAll();
+  var c = document.getElementById('hlist');
+  if (!all.length) {
+    c.innerHTML = '<div class="empty"><div class="eicon">📋</div>Niciun bon salvat inca</div>';
+    return;
+  }
+  all.reverse();
+  window._hc = all;
+  var html = '';
+  for (var i = 0; i < all.length; i++) {
+    var rec = all[i];
+    html += '<div class="hist-item">' +
+      '<div class="hl">' +
+      '<div class="hdate">' + new Date(rec.date).toLocaleDateString('ro-MD') + '</div>' +
+      '<div class="hname">' + rec.luna + ' - ' + rec.rows + ' produse</div>' +
+      '</div>' +
+      '<div class="htotal">' + rec.total + ' lei</div>' +
+      '<div class="hbtns">' +
+      '<button class="hbtn dl" onclick="dlHist(' + rec.id + ')">XLS</button>' +
+      '<button class="hbtn rm" onclick="delHist(' + rec.id + ')">X</button>' +
+      '</div></div>';
+  }
+  c.innerHTML = html;
+}
+
+function dlHist(id) {
+  var all = window._hc || [];
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].id === id) { rows = all[i].data; dlXls(); return; }
+  }
+}
+
+async function delHist(id) {
+  if (!confirm('Stergi acest bon?')) return;
+  await dbDel(id);
+  loadHist();
+}
+
+function st(msg, cls) {
+  var s = document.getElementById('st');
+  s.innerHTML = msg;
+  s.className = 'status ' + cls;
+  s.style.display = 'block';
+}
+
+function doreset() {
+  files = []; rows = []; renderPrev();
+  document.getElementById('res').style.display = 'none';
+  document.getElementById('st').style.display = 'none';
+  document.getElementById('pbtn').disabled = true;
+  document.getElementById('fi').value = '';
+}
+
+function showTab(t) {
+  document.getElementById('tab-parse').style.display = t === 'parse' ? 'block' : 'none';
+  document.getElementById('tab-history').style.display = t === 'history' ? 'block' : 'none';
+  var tabs = document.querySelectorAll('.tab');
+  tabs[0].classList.toggle('active', t === 'parse');
+  tabs[1].classList.toggle('active', t === 'history');
+  if (t === 'history') loadHist();
+}
+</script>
+</body>
+</html>
